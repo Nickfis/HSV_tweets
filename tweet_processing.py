@@ -4,8 +4,6 @@ import os
 os.chdir("/home/Nickfis/Documents/Projects/HSV_tweets")
 all_tweets = pd.read_csv('complete_tweets.csv')
 
-
-
 all_tweets.head()
 
 # overall 165965 tweets in the dataset
@@ -17,7 +15,8 @@ translator = Translator()
 # checking how long the translation takes
 subset = pd.Series(all_tweets['text'])
 
-translator.translate("Emmie ist die aller beste. Ich wünschte ich könnte noch viel mehr Zeit mit ihr verbringen", src='de', dest='en').text
+# an example to see whether it works.
+translator.translate("Sechs Mal Deutscher Meister, drei Mal Pokalsieger, egal welche Liga, HSV!", src='de', dest='en').text
 
 all_tweets.isnull().any()
 
@@ -55,12 +54,6 @@ while i <= 161000:
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
-# sall_tweets['translation'] = all_tweets['text'].apply(lambda x: translator.translate(x, src='de', dest='en').text)
-#
-# translation.to_csv('translated_tweets.csv')
-#
-# translation
-
 ######################## push together all the downloaded tweet chunks and adding the dates to them
 from os import listdir
 
@@ -73,11 +66,6 @@ import re
 
 csv_files = sorted(csv_files, key=lambda x:int(re.findall('(?<=translated_tweets)\d+', x)[0]))
 pd.read_csv(csv_files[1])
-
-len(csv_files[0])
-
-
-
 
 all_tweets.head()
 final_tweets = []
@@ -95,9 +83,8 @@ for i in csv_files:
     # append the df to the list to create overall frame
     final_tweets.append(translated_tweets)
 
-final_tweets[32]
-
-
+# taking all dataframes from the list, concatenate them into the final dataframe.
 final_df = pd.concat(final_tweets)
 
+# save it to disk.
 final_df.reset_index(drop=True).to_csv('all_tweets_en.csv', index=False)
