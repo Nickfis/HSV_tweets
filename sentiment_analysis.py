@@ -6,10 +6,10 @@ os.chdir("/home/Nickfis/Documents/Projects/HSV_tweets")
 
 np.random.seed(200)
 # reading in training set
-train = pd.read_csv('trainingset.csv', engine='python', header=None).sample(1000)
+train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(1000)
 
 train.head()
-############################################### data preprocessing ###############################################
+############################################### data preprocessing: Cleaning up ###############################################
 # only need the tweet and the sentiment for training
 train = train.iloc[:, [0,5]]
 colnames = ['sentiment', 'tweet']
@@ -22,7 +22,7 @@ train['length'].describe()
 # for the tweets that have above 140 characters, we can see that there are problems with html encoding.
 train[train['length']>140]
 # checking for tweet 569987
-train.loc[569987].tweet
+train.loc[852964].tweet
 # we have to clean this up.Furthermore mentions, urls and hashtags will be removed in the cleaning process
 # example1 = BeautifulSoup(train.loc[569987].tweet, 'lxml')
 # # way better.
@@ -35,14 +35,27 @@ import re
 
 # tweet cleaner
 tok = WordPunctTokenizer()
-mentions = r'@[A-Za-z0-9]+' # want to get rid of mentions
-urls = r'https?://[A-Za-z0-9./]+' # want to delete urls
+mentions = r'@[A-Za-z0-9_]+' # want to get rid of mentions
+urls = r'https?://[^ ]+' # want to delete urls
 combined_pat = r'|'.join((mentions, urls))
+www_pat = r'www.[^ ]+' # also delete URLs that start with wwww.
+negations_dic = {"isn't":"is not", "aren't":"are not", "wasn't":"was not", "weren't":"were not",
+                "haven't":"have not","hasn't":"has not","hadn't":"had not","won't":"will not",
+                "wouldn't":"would not", "don't":"do not", "doesn't":"does not","didn't":"did not",
+                "can't":"can not","couldn't":"could not","shouldn't":"should not","mightn't":"might not",
+                "mustn't":"must not"}
+neg_pattern = re.compile(r'\b(' + '|'.join(negations_dic.keys()) + r')\b')
+
+
 
 def tweet_cleaner(text):
     soup = BeautifulSoup(text, 'lxml').get_text() # taking care of html encoding
     cleaned = re.sub(combined_pat, '', soup) # delete all mentions and urls
-    cleaned = re.sub("[^a-zA-Z]", ' ', cleaned).lower() # get rid of all punctuation and make it lowercase.
+    cleaned = re.sub(www_pat,'', cleaned).lower() # delete www. urls and turn it into lower case
+    # using the negations dictionary to take switch all negations into their written out term
+    # otherwise when we get rid of punctuation, can't will turn into can t (Which might be equally interpreted as "can" "t")
+    negations_clean = neg_pattern.sub(lambda x: negations_dic[x.group()], cleaned)
+    cleaned = re.sub("[^a-zA-Z]", ' ', negations_clean) # get rid of all punctuation
     # This adds however a whitespace whenever the regex is matched. But we can't use '' as replacement because otherwise all words will be joined.
     # Therefore we are going to spit the tweet into each word and then join them using only one whitespace to get a cleaned version with exactly one space between each word.
     word_list = tok.tokenize(cleaned)
@@ -54,8 +67,23 @@ test_result = []
 for t in testing:
     test_result.append(tweet_cleaner(t))
 
+test_result
+
 # now use the tweet_cleaner to process all the tweets in the train set
 # check for the time on the subset to see how long we can expect it to run for all tweets
+import time
+start_time = time.time()
+# cleaning
+train['tweet'] = train['tweet'].apply(lambda x: tweet_cleaner(x))
+print("--- %s seconds ---" % (time.time() - start_time))
+
+############################################### data preprocessing: lemmatization,  ###############################################
+
+# tokenization
+def tokenizer(tweet):
+    theTokens = re.findall(r'\b\w[\w-]*\b', tweet)
+    return theTokens
+
 
 
 
