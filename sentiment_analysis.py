@@ -6,7 +6,7 @@ os.chdir("/home/Nickfis/Documents/Projects/HSV_tweets")
 
 np.random.seed(200)
 # reading in training set
-train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(1000)
+train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(1500)
 
 train.head()
 ############################################### data preprocessing: Cleaning up ###############################################
@@ -33,7 +33,7 @@ from bs4 import BeautifulSoup
 from nltk.tokenize import WordPunctTokenizer
 import re
 
-# tweet cleaner
+# clean tweets and normalize them
 tok = WordPunctTokenizer()
 mentions = r'@[A-Za-z0-9_]+' # want to get rid of mentions
 urls = r'https?://[^ ]+' # want to delete urls
@@ -48,7 +48,7 @@ neg_pattern = re.compile(r'\b(' + '|'.join(negations_dic.keys()) + r')\b')
 
 
 
-def tweet_cleaner(text):
+def normalizer(text):
     soup = BeautifulSoup(text, 'lxml').get_text() # taking care of html encoding
     cleaned = re.sub(combined_pat, '', soup) # delete all mentions and urls
     cleaned = re.sub(www_pat,'', cleaned).lower() # delete www. urls and turn it into lower case
@@ -62,12 +62,12 @@ def tweet_cleaner(text):
     return ' '.join(word_list).strip()
 
 
-testing = train.tweet.iloc[:100]
-test_result = []
-for t in testing:
-    test_result.append(tweet_cleaner(t))
-
-test_result
+# testing = train.tweet.iloc[:100]
+# test_result = []
+# for t in testing:
+#     test_result.append(tweet_cleaner(t))
+#
+# test_result
 
 # now use the tweet_cleaner to process all the tweets in the train set
 # check for the time on the subset to see how long we can expect it to run for all tweets
@@ -77,14 +77,51 @@ start_time = time.time()
 train['tweet'] = train['tweet'].apply(lambda x: tweet_cleaner(x))
 print("--- %s seconds ---" % (time.time() - start_time))
 
-############################################### data preprocessing: lemmatization,  ###############################################
+############################################### data preprocessing: tokenizing, stemming, lemmatization ###############################################
+# removing stopwords
+from nltk.corpus import stopwords
+stop = stopwords.words('english')
 
+train['tweet'] = train['tweet'].apply(lambda x: ' '.join([word for word in x.split() if word not in (stop)]))
+
+# count vectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer()
+cv.fit(train.tweet)
+
+# looking at the use of each of the words found split up between tweets labelled as positive and negative
+neg_cv = cv.transform(train[train['sentiment'] == 0].tweet) # 0 encoded as negative sentiment
+pos_cv = cv.transform(train[train['sentiment'] == 4].tweet) # 4 encoded as positive
+neg_tf = np.sum(neg_cv,axis=0)
+pos_tf = np.sum(pos_cv,axis=0)
+neg = np.squeeze(np.asarray(neg_tf))
+pos = np.squeeze(np.asarray(pos_tf))
+
+# create the frequency matrix using all words in the set (by transposing making them the rows) and show frequencies in columns
+frequency = pd.DataFrame([neg,pos],columns=cv.get_feature_names()).transpose()
+
+frequency.columns = ['negative', 'positive']
+
+frequency['overall_frequency'] = frequency['negative'] + frequency['positive']
+# sort by overall frequency to see the most used words in the dataset
+frequency.sort_values(by='overall_frequency', ascending=False)
+
+train.head()
+
+# pos_tagging: first part of speech tagging for stemming of the used words in the tweets
+import nltk
 # tokenization
 def tokenizer(tweet):
     theTokens = re.findall(r'\b\w[\w-]*\b', tweet)
     return theTokens
 
+# example what we have to do now in order to find stem for each word
+text = tokenizer(train['tweet'].iloc[3])
+nltk.pos_tag(text2)
 
+
+5+3
+train.head()
 
 
 
