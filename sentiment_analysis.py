@@ -5,9 +5,9 @@ import matplotlib as plt
 
 os.chdir("/home/Nickfis/Documents/Projects/HSV_tweets")
 
-np.random.seed(200)
+np.random.seed(1887)
 # reading in training set
-train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(50000)
+train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1')
 
 train.head()
 ############################################### data preprocessing: Cleaning up ###############################################
@@ -23,7 +23,7 @@ train['length'].describe()
 # for the tweets that have above 140 characters, we can see that there are problems with html encoding.
 train[train['length']>140]
 # checking for tweet 569987
-train.loc[852964].tweet
+#train.loc[852964].tweet
 # we have to clean this up.Furthermore mentions, urls and hashtags will be removed in the cleaning process
 # example1 = BeautifulSoup(train.loc[569987].tweet, 'lxml')
 # # way better.
@@ -78,6 +78,9 @@ start_time = time.time()
 train['tweet'] = train['tweet'].apply(lambda x: normalizer(x))
 print("--- %s seconds ---" % (time.time() - start_time))
 
+#train.to_csv('cleaned_up_train.csv', index=False)
+
+train = pd.read_csv('cleaned_up_train.csv')
 ############################################### data preprocessing: tokenizing, stemming, lemmatization ###############################################
 # removing stopwords
 from nltk.corpus import stopwords
@@ -114,7 +117,6 @@ frequency['overall_frequency'].describe()
 frequency['overall_frequency'].hist(bins=100, range=(0,50))
 
 # look at top 10 words most used in positive and negative tweets
-frequency.head()
 frequency.sort_values(by='negative', ascending=False).head(10)
 frequency.sort_values(by='positive', ascending=False).head(10)
 
@@ -199,12 +201,39 @@ X_train.shape
 X_validation.shape
 X_test.shape
 
+## Feature extraction
+
+# create a (limited) count vectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+cvec = CountVectorizer()
+logreg = LogisticRegression()
+n_features = 20000
+
+sen
+data_pipeline = Pipeline([
+                        ('vectorizer', cvec),
+                        ('classifier', logreg)
+                        ])
+data_pipeline
+def accuracy_summary(pipeline, X_train, y_train, X_test, y_test):
+    start_time = time()
+    sentiment_fit = pipeline.fit(X_train, y_train)
+    y_pred = sentiment_fit.predict(X_test)
+    end_time = time() - start_time
+    accuracy = accuracy_score(y_test, y_pred)
+    print(confusion_matrix(y_test, y_pred))
+    return end_time, accuracy
 
 
+timing, accuracy_result = accuracy_summary(data_pipeline, X_train, y_train, X_test, y_test)
 
-
-
-
+timing
+accuracy_result
 5+3
 
 
