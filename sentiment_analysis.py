@@ -173,7 +173,34 @@ plt.title('neg_normcdf_hmean vs pos_normcdf_hmean')
 train = train[['tweet', 'sentiment']]
 
 
-## split into train, validation and test
+# split into train, validation and test
+
+# since the dataset has overall 1.6 million observations, a validation and testset of 1% still gives us about 15.000 observations, which is enough to test the trained classifer.
+# On the other hand this gives us over 1.5 million observations to train the classifer on.
+
+train.head()
+train.loc[train['sentiment']==4, 'sentiment'] = 1
+
+df = train
+del train
+
+
+x = df['tweet']
+y = df['sentiment']
+from sklearn.cross_validation import train_test_split
+
+seed = 1887
+
+X_train, X_validation, y_train, y_validation = train_test_split(x,y, test_size=0.02, random_state=seed)
+
+X_validation, X_test, y_validation, y_test = train_test_split(X_validation, y_validation, test_size=0.5, random_state=seed)
+
+X_train.shape
+X_validation.shape
+X_test.shape
+
+
+
 
 
 
