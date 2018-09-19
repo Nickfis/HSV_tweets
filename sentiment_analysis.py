@@ -7,7 +7,7 @@ os.chdir("/home/Nickfis/Documents/Projects/HSV_tweets")
 
 np.random.seed(200)
 # reading in training set
-train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(10000)
+train = pd.read_csv('trainingset.csv', engine='python', header=None, encoding='ISO-8859–1').sample(50000)
 
 train.head()
 ############################################### data preprocessing: Cleaning up ###############################################
@@ -23,7 +23,7 @@ train['length'].describe()
 # for the tweets that have above 140 characters, we can see that there are problems with html encoding.
 train[train['length']>140]
 # checking for tweet 569987
-train.loc[972155].tweet
+train.loc[852964].tweet
 # we have to clean this up.Furthermore mentions, urls and hashtags will be removed in the cleaning process
 # example1 = BeautifulSoup(train.loc[569987].tweet, 'lxml')
 # # way better.
@@ -75,7 +75,7 @@ def normalizer(text):
 import time
 start_time = time.time()
 # cleaning
-train['tweet'] = train['tweet'].apply(lambda x: tweet_cleaner(x))
+train['tweet'] = train['tweet'].apply(lambda x: normalizer(x))
 print("--- %s seconds ---" % (time.time() - start_time))
 
 ############################################### data preprocessing: tokenizing, stemming, lemmatization ###############################################
@@ -89,8 +89,6 @@ train['tweet'] = train['tweet'].apply(lambda x: ' '.join([word for word in x.spl
 from sklearn.feature_extraction.text import CountVectorizer
 cv = CountVectorizer()
 cv.fit(train.tweet)
-
-neg_cv
 
 # looking at the use of each of the words found split up between tweets labelled as positive and negative
 # transofrm function to turn the sparse matrix cv into a dense one
@@ -119,6 +117,77 @@ frequency['overall_frequency'].hist(bins=100, range=(0,50))
 frequency.head()
 frequency.sort_values(by='negative', ascending=False).head(10)
 frequency.sort_values(by='positive', ascending=False).head(10)
+
+# Another metric is the frequency a words occurs in the class. This is defined as
+pos_freq = train[train['sentiment']==4].shape[0]
+
+# pos_porcentage will now hold the amount of tweets a word can be found in divided by the overall number of positive tweets
+# pos_frequenc of that word / positive_frequency_tweets
+frequency['pos_percentage'] = frequency['positive'] / pos_freq
+
+# now we want to combie both the positive rate and the appearance in positive tweets of that word into one metric
+# since pos_percentage is a way smaller value in general we will have to do some scaling, so that it does not get overpowered by the pos_rate value
+# We will therefore treat both columns as samples as an approximation of their probability distrbution. Scaling them between 0-1, giving each word basically its
+# percentile inside the CDF as its value.
+from scipy.stats import norm
+def normcdf(x):
+    return norm.cdf(x, x.mean(), x.std())
+
+# creating the cdf for the pos_rate column
+frequency['pos_rate_normcdf'] = normcdf(frequency['pos_rate'])
+# for the pos_percentage column
+frequency['pos_percentage_normcdf'] = normcdf(frequency['pos_percentage'])
+# taking the mean of both columns to create the new metric
+frequency['pos_normcdf'] = frequency[['pos_rate_normcdf', 'pos_percentage_normcdf']].mean(axis=1)
+
+frequency.head()
+
+# order according to newly created metric
+frequency.sort_values(by='pos_normcdf', ascending=False)
+
+# creating the same metric now for negative tweets
+
+# create negative rate first
+frequency['neg_rate'] = frequency['negative'] / frequency['overall_frequency']
+# percentage in its class
+neg_freq = train[train['sentiment']==0].shape[0]
+frequency['neg_percentage'] = frequency['negative'] / neg_freq
+
+# doing column calculations for creation of negative sentiment metrics
+frequency['neg_rate_normcdf'] = normcdf(frequency['neg_rate'])
+# for the pos_percentage column
+frequency['neg_percentage_normcdf'] = normcdf(frequency['neg_percentage'])
+# taking the mean of both columns to create the new metric
+frequency['neg_normcdf'] = frequency[['neg_rate_normcdf', 'neg_percentage_normcdf']].mean(axis=1)
+# sorting by that to check strongest negative words
+frequency.sort_values(by='neg_normcdf', ascending=False)
+# seems to work well from first impression
+import seaborn as sns
+from pylab import *
+plt.figure(figsize=(8,6))
+ax = sns.regplot(x="neg_normcdf", y="pos_normcdf",fit_reg=False, scatter_kws={'alpha':0.5},data=frequency)
+plt.ylabel('Positive Rate and Frequency CDF')
+plt.xlabel('Negative Rate and Frequency CDF')
+plt.title('neg_normcdf_hmean vs pos_normcdf_hmean')
+# getting rid of length column
+train = train[['tweet', 'sentiment']]
+
+
+## split into train, validation and test
+
+
+
+
+5+3
+
+
+
+
+
+
+
+
+
 # pos_tagging: first part of speech tagging for stemming of the used words in the tweets
 import nltk
 # tokenization
@@ -130,11 +199,8 @@ def tokenizer(tweet):
 text = tokenizer(train['tweet'].iloc[3])
 nltk.pos_tag(text2)
 
-## adding more and more features to the analysis for the classifier first. # analysis part 3 has to be finished.
 
 
-5+3
-train.head()
 
 
 
